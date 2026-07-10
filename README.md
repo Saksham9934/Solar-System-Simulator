@@ -24,8 +24,7 @@
 
 ### 🌍 Explore the Solar System in Stunning 3D
 
-**Live Demo:** https://YOUR-LIVE-DEMO.vercel.app
-
+**Live Demo:** [(https://solar-system-simulator-five.vercel.app/)]
 </div>
 
 ---
