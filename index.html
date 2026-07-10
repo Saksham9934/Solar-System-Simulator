@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Aphelion — Interactive 3D Solar System</title>
+<meta name="description" content="A realistic, interactive 3D solar system built with Three.js." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css" />
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+  <!-- Loading screen -->
+  <div id="loader">
+    <div class="loader-inner">
+      <div class="loader-orbit">
+        <div class="loader-sun"></div>
+        <div class="loader-ring"></div>
+        <div class="loader-ring loader-ring--2"></div>
+      </div>
+      <div class="loader-text">
+        <span class="loader-title">APHELION</span>
+        <span class="loader-sub" id="loader-status">Calibrating ephemeris…</span>
+      </div>
+      <div class="loader-bar"><div class="loader-bar-fill" id="loader-progress"></div></div>
+    </div>
+  </div>
+
+  <!-- 3D canvas mounts here -->
+  <div id="scene-root"></div>
+
+  <!-- Floating planet labels -->
+  <div id="label-layer" aria-hidden="true"></div>
+
+  <!-- Vignette / scanline cinematic overlay -->
+  <div id="cine-overlay"></div>
+
+  <!-- Top HUD -->
+  <header id="hud-top">
+    <div class="brand">
+      <span class="brand-mark">☉</span>
+      <div class="brand-text">
+        <span class="brand-title">APHELION</span>
+        <span class="brand-tagline">Solar System Simulator</span>
+      </div>
+    </div>
+
+    <nav id="planet-nav" aria-label="Jump to planet"></nav>
+
+    <div class="hud-top-actions">
+      <button class="icon-btn" id="btn-darkmode" title="Toggle deep-space mode" aria-label="Toggle deep-space mode">
+        <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-fullscreen" title="Toggle fullscreen" aria-label="Toggle fullscreen">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Info panel (slides in on planet select) -->
+  <aside id="info-panel" class="closed">
+    <button id="info-close" aria-label="Close panel">✕</button>
+    <div class="info-scroll">
+      <div class="info-eyebrow" id="info-type">TERRESTRIAL PLANET</div>
+      <h2 id="info-name">Earth</h2>
+      <p id="info-desc">The pale blue dot.</p>
+
+      <div class="info-stats">
+        <div class="stat"><span class="stat-label">Diameter</span><span class="stat-value" id="stat-diameter">—</span></div>
+        <div class="stat"><span class="stat-label">Distance from Sun</span><span class="stat-value" id="stat-distance">—</span></div>
+        <div class="stat"><span class="stat-label">Moons</span><span class="stat-value" id="stat-moons">—</span></div>
+        <div class="stat"><span class="stat-label">Day Length</span><span class="stat-value" id="stat-day">—</span></div>
+        <div class="stat"><span class="stat-label">Year Length</span><span class="stat-value" id="stat-year">—</span></div>
+        <div class="stat"><span class="stat-label">Avg. Temp</span><span class="stat-value" id="stat-temp">—</span></div>
+      </div>
+
+      <div class="info-facts">
+        <h3>Field Notes</h3>
+        <ul id="info-facts-list"></ul>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Bottom telemetry / control strip -->
+  <footer id="hud-bottom">
+    <div class="telemetry-group">
+      <button class="control-btn control-btn--primary" id="btn-play" aria-label="Play or pause">
+        <svg id="icon-pause" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+        <svg id="icon-play" viewBox="0 0 24 24" style="display:none"><path d="M7 4l14 8-14 8V4z"/></svg>
+      </button>
+
+      <div class="speed-control">
+        <span class="telemetry-label">VELOCITY</span>
+        <input type="range" id="speed-slider" min="0" max="5" step="0.01" value="1" aria-label="Simulation speed">
+        <span class="telemetry-value" id="speed-value">1.00×</span>
+      </div>
+    </div>
+
+    <div class="telemetry-group telemetry-group--toggles">
+      <label class="toggle-chip">
+        <input type="checkbox" id="toggle-orbits" checked>
+        <span>Orbit Paths</span>
+      </label>
+      <label class="toggle-chip">
+        <input type="checkbox" id="toggle-labels" checked>
+        <span>Labels</span>
+      </label>
+      <button class="control-btn" id="btn-reset" title="Reset camera">
+        <svg viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6M4.5 15a8 8 0 0 0 14.5 3M19.5 9A8 8 0 0 0 5 6"/></svg>
+        <span>Reset View</span>
+      </button>
+    </div>
+
+    <div class="telemetry-group telemetry-readout">
+      <span class="telemetry-label">SIM DATE</span>
+      <span class="telemetry-value telemetry-mono" id="sim-date">Y0 · D0</span>
+    </div>
+  </footer>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
